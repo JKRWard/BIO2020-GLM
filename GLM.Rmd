@@ -1,0 +1,232 @@
+---
+title: "Tutorial"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(mosaic)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Generalised linear models
+
+### Why might we want to generalise a linear model?
+Recall your initial lectures, practicals and online websites from this module,
+and remember that scientific data can arise in different 'forms' or 'types'. For
+example:
+
+* **continuous (ratio) data**
+  * These could be positive or negative, and include decimal points, 2.45, 5.01,
+  -3.78, 2.00. Examples might include temperate (degrees Centigrade).
+* **continuous (ratio) data, bounded by zero**
+  * Again your data have decimal points, but no zeros; 4.58, 2.912, 5.002 etc.
+  Examples might include length (cm).
+* **Whole number data, bounded by zero**
+  * These are often count data, 4, 12, 0, 234. Examples might include the number
+  of hedgehogs seen at a site.
+* **Proportion or percentage data, 0 to 1, or 0 to 100**
+  * These values can have decimals, but are bounded between 0 and 1 (or 0 and 100
+  for percentages). Usually analysed as proportions. 0.23, 0.15, 0.98 etc. Can
+  arise in lots of experiments, e.g. proportion of insects killed by a new pesticide
+* **Binary categorical data**
+  * Two categories present, often coded as 0 or 1. Again wide occurrence in 
+  biology: dead/alive, present/absent, resistant/susceptible etc.
+* **Ordinal categorical data**
+  * Multiple categories present, 'first', 'second', 'third' etc. These can arise
+  in questionnaire surveys where respondants have to select a preference from 1
+  to 5, or river hydrology of stream networks.
+  
+### Baseline assumptions of linear model
+A key assumption of your linear model, using the `lm()` function, is that the
+**response variable** is continuous, i.e. could potentially have decimals. Strictly-
+speaking, negative values should theoretically be possible, although in practice
+for most datasets `lm()` is fairly robust to this assumption, and if your lower
+bound is zero it generally does not cause too many problems. If you have continuous
+data as your response, and you suspect your model is poorly fitted, you can
+often easily correct this by taking a logarithm of your response variable. (Take
+the logarithm as `log(response + 1)` if you have zero values.)
+
+The statistical distribution underlying the standard `lm()` linear model is the
+normal or "Gaussian" distribution, named after Friederick Gauss (German
+mathematician). The graph below shows a frequency histogram of 100 random numbers,
+with a mean of 50, and standard deviation of 5, generated using the `rnorm()`
+function which uses a Gaussian or normal distribution.
+
+```{r gaussian_distribution, echo=TRUE, cache=TRUE}
+mydata <- rnorm(n = 100, mean = 50, sd = 5)
+gf_histogram(~mydata) %>% 
+  gf_lims(x = c(0, 100))
+```
+
+ Look at the scale of the x-axis and it is obvious that we have ratio data with
+ decimal points, and we can confirm this by looking at the first few numbers in
+ `mydata`:
+ 
+```{r, echo=TRUE}
+head(mydata)
+```
+
+As you can see from the above, there are two 'parameters' to a normal
+distribution, the mean and the standard deviation. Conveniently, 95% of the
+data will fall within + or - 1.96 (i.e. approximately 2) standard deviations.
+Adjust the mean and sd here to see their effects.
+
+```{r gaussian_distribution_ui, echo=FALSE}
+    titlePanel("The normal (Gaussian) distribution")
+
+    sidebarLayout(
+        sidebarPanel(
+            sliderInput("mean",
+                        "Mean",
+                        min = 0,
+                        max = 100,
+                        value = 50),
+            sliderInput("sd",
+                        "Standard deviation",
+                        min = 0.1,
+                        max = 10,
+                        value = 5)
+        ),
+
+        mainPanel(
+           plotOutput("gauss_plot")
+        )
+    )
+```
+```{r gaussian_distribution_server, context="server"}
+output$gauss_plot <- renderPlot({
+  gf_dhistogram(~ rnorm(n=100, mean=input$mean, sd=input$sd), bins = 20) %>% 
+    gf_dist("norm", params = list(mean=input$mean, sd=input$sd), colour = "blue") %>% 
+    gf_lims(x = c(0, 100), y = c(0, 0.15)) %>% 
+    gf_labs(x = "Value of random normal variable",
+            y = "Density (proportion of values)")
+})
+```
+
+**Comments**
+
+* Note how as you increase or decrease the mean, the distribution moves left or
+right, but remains roughly the same shape
+* A low standard deviation results in the values being packed together; a high
+sd flattens and spreads the curve
+* The blue line is a fitted curve according to the Gaussian distribution for 
+these data.
+ 
+## Poisson and Binomial distributions
+The two distributions you are most likely to need as biologists are the Poisson
+distribution for counts named after Simeon Poisson (French mathematician), and
+the Binomial distribution for 1/0 or presence/absence data (no-one seems to have
+claimed credit for this one!).
+
+Let's have a quick look at these two distributions.
+
+### Poisson distribution
+Remember, this returns whole numbers (no decimals) greater than or equal to zero.
+It takes a parameter $\lambda$ (Greek letter lambda) which adjusts the shape of
+this distribution. Try the interactive below to see what happens:
+
+```{r poisson_distribution_ui, echo=FALSE}
+    titlePanel("The Poisson distribution for whole-number counts")
+
+    sidebarLayout(
+        sidebarPanel(
+          withMathJax(),
+            sliderInput("lambda",
+                        "\\(\\lambda\\) (lambda)",
+                        min = 1,
+                        max = 100,
+                        value = 50)
+        ),
+
+        mainPanel(
+           plotOutput("poiss_plot")
+        )
+    )
+
+```
+
+```{r poisson_distribution_server, context="server"}
+output$poiss_plot <- renderPlot({
+    gf_dist("pois", params = list(lambda=input$lambda)) %>% 
+    gf_lims(x = c(0, 100), y = c(0, 0.15)) %>% 
+    gf_labs(x = "Value of random Poisson (count) variable",
+            y = "Density (proportion of values)")
+})
+```
+
+**Note**
+
+* When $\lambda$ is high, you'll see that the Poisson distribution
+looks fairly similar to a normal distribution, except with whole numbers. However
+as $\lambda$ gets smaller, the distribution gets ***squashed*** to the left, as
+it cannot have any values below zero.
+* The histogram is shown slightly differently, as we are dealing with whole
+number counts.
+
+### Binomial distribution
+This is useful when you have:
+
+* dead / alive
+* present / absent
+* true / false
+* proportion or percentage data
+
+The main parameter is the probability of "success" on each "trial". So if you
+toss a (fair) coin your probability of a head should be 0.5.  You might do an
+experiment where you have 25 replicates, in each of which you try and germinate
+10 seeds. The "size" of each replicate is 10, and you would have a count of
+the numbers of seeds germinated or failed in each replicate.
+
+Below, we have the simplest setup, 25 replicates, with each of size one (which
+produces a very simple plot). Adjust the size of each replicate, which is
+equivalent to the number of seeds per replicate in the example above, and the
+probability of success, equivalent to the probability of germination.
+
+```{r binomial_distribution_ui, echo=FALSE}
+    titlePanel("The binomial distribution")
+
+    sidebarLayout(
+        sidebarPanel(
+            sliderInput("size",
+                        "Size of each trial (e.g. number of seeds per replicate)",
+                        min = 1,
+                        max = 100,
+                        value = 1),
+            sliderInput("prob",
+                        "Probability of success (e.g. probability of seed germination)",
+                        min = 0,
+                        max = 1,
+                        value = 0.5)
+        ),
+
+        mainPanel(
+           plotOutput("binom_plot")
+        )
+    )
+
+```
+
+```{r binomial_distribution_server, context="server"}
+output$binom_plot <- renderPlot({
+    gf_histogram(~rbinom(n=25, size=input$size, prob=input$prob)) %>% 
+    #gf_lims(x = c(0, 25), y = c(0, 0.25)) %>% 
+    gf_labs(x = "Binomial count (e.g. number of seeds germinating per replicate)",
+            y = "Number of replicates in this category")
+})
+```
+
+**Note**
+
+* Before you adjust the sliders, the sample size is only 1 (e.g. one seed per)
+replicate, and the probability (of germination) is 0.5. Therefore roughly half
+of your 25 replicates will fall into the 0 (no germination) category, and half
+into the 1.0 (germination) category.
+* As you increase the number of seeds per replicate (maximum of 100) you will
+see additional whole numbers appearing on the horizontal axis, representing
+the numbers of successes (e.g. germinating seeds)
+* the total of all the vertical axes is always 25, which is the total number
+of replicates in this example.
+
