@@ -7,6 +7,7 @@ runtime: shiny_prerendered
 ```{r setup, include=FALSE}
 library(learnr)
 library(mosaic)
+sppcount <- read.csv("www/sppcount.csv")
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
@@ -316,4 +317,162 @@ be thought of as a 'generalised' SS.
 * If making predictions for new data based on Poisson or Binomial errors, you
 need an extra step to account for the link function.
 
+## GLM with count data
+### What goes wrong with `lm()`?
+We'll begin by looking at a simple example of the numbers of species of aquatic
+invertebrates in rivers with different levels of pollution. Aquatic invertebrates
+can be very sensitive to water pollution, and are useful **bio-indicators** of
+pollution events etc.
 
+![](www/river.jpg)
+
+An advanced system has now been developed by the Centre
+for Ecology and Hydrology that is used by the Envionment Agency to assess river
+quality, called  <a href="https://www.ceh.ac.uk/services/rivpacs-reference-database"
+target="_blank">RIVPACS</a>. We will, however, just look at a simple set of species
+counts and pollution.
+
+The data are in a data.frame called `sppcount`. Begin by creating a scatterplot
+of the data, run a linear model, examine its summary table, and look at the plots
+of residuals and QQ plot. **Hints:** Use `gf_point()` for the scatterplot, for
+the `lm()` make sure you have your response and explanatory variables the right
+way round. Use `mplot(spp_count_lm)` to check all diagnostic plots or `gf_qq()`
+with the model residuals.
+
+```{r sppcount_lm, exercise=TRUE}
+
+```
+```{r sppcount_lm-solution}
+# Create scatterplot
+gf_point(species ~ pollution, data=sppcount)
+
+# Create linear model, check coefficients and R-squared
+sppcount_lm <- lm(species~pollution, data=sppcount)
+summary(sppcount_lm)
+
+# Display first two diagnostic plots
+mplot(sppcount_lm, which=1:2)
+```
+
+At first site the linear model looks quite good, with a highly significant
+negative effect of pollution on the count of species, and the model explains
+almost 80% of the variation. However, there are two clues that something is
+amiss:
+
+1. The QQ plot has a distinct S-shape to it
+2. What is the species count at high levels of pollution.
+
+We can check the latter by plotting the fitted line onto our scatterplot, and
+we can also calculate a predicted number of species for a given amount of water
+pollution. As this is a **linear model** the line function does not do anything,
+so we can use the simple `predict()` function to obtain a predicted spp count.
+
+In the box below, create a scatterplot with the fitted line, and check the
+number of species at a pollution level of about 15. You can extend the range of
+your x-axis in your plot by adding the `gf_lim(x = c(0, 15))` option.
+
+```{r sppcount_lm_predict, exercise=TRUE}
+sppcount_lm <- lm(species ~ pollution, data = sppcount)
+
+
+```
+```{r sppcount_lm_predict-solution}
+gf_point(species ~ pollution, data = sppcount) %>% 
+  gf_lims(x = c(0, 15)) %>% 
+  gf_lm()
+```
+
+We have a problem. From roughly pollution=12.5 onwards we are getting **negative**
+numbers of species, which obviously cannot happen. To solve the problem, we'll
+repeat the analysis, but as a generalised linear model.
+
+### Correct analysis with `glm()` function
+Remember that for count data the correct statistical distribution is the **Poisson distribution**
+So simply replace your original `lm()` function with `glm()`, adding the option
+in the latter that `family = poisson`. Again display the model `summary()` and
+diagnostic plots.
+
+```{r sppcount_glm, exercise=TRUE}
+
+```
+```{r sppcount_glm-solution}
+# Create scatterplot
+gf_point(species ~ pollution, data=sppcount)
+
+# Create linear model, check coefficients and R-squared
+sppcount_glm <- glm(species~pollution, family = poisson, data=sppcount)
+summary(sppcount_glm)
+
+# Display first two diagnostic plots
+mplot(sppcount_glm, which=1:2)
+```
+
+**Key points from output of `glm()` model**
+
+* The summary table again shows pollution as significant. Instead of an R-squared
+value there is an AIC. When comparing models the lower the AIC the better.
+* The QQ plot has an S-shaped curve, but this is less than before: compare the
+range of values on the y-axis of the QQ plot for the `lm()` and `glm()`
+
+```{r lm_v_glm, echo=FALSE}
+question("What happens if I run glm() without specifying the family?",
+         answer("It uses a normal distribution estimated by least squares", 
+                message = "No. It uses a normal (Gaussian) distribution, but
+                estimates by maximum likelihood. The coefficients for the
+                intercept and gradient will be the same, but AIC and deviance
+                will show."),
+         answer("It uses a binomial distribution estimated by maximum likelihood",
+                message = "No. It defaults to a normal (Gaussian) distribution, but
+                estimates by maximum likelihood."),
+         answer("It uses a Poisson distribution estimated by maximum likelihood",
+                message = "No. It defaults to a normal (Gaussian) distribution, but
+                estimates by maximum likelihood."),
+         answer("It uses a Gaussian distribution estimated by maximum likelihood",
+                correct = TRUE, message = "Good. It uses a normal (Gaussian) distribution, but
+                estimates by maximum likelihood. Whilst the coefficients for the
+                intercept and gradient will be the same as lm(), in glm() AIC and deviance
+                will show."),
+         allow_retry = TRUE,
+         random_answer_order = TRUE)
+```
+
+### Adding the correct fitted line
+You'll recall that GLMs use **link** functions to connect the response data to
+the explanatories, that account for the appropriate characteristics of the
+response data. Where the response data are continuous and `lm()` can be used,
+the link function does not do anything, hence it is known as the "identity".
+However, for Posson (and binomial) distributions, we need to take this into 
+account.
+
+Poisson (count) distributions use the log-link. We could therefore take the 
+antilog of our predictions to get back to the values for our fitted line. Since
+the `glm()` uses natural logarithms, often shown as $ln$ or $log_e$, the antilog
+is the exponent. Hence $ln(x)$ is $e^x$. R has the function `exp()` to take the
+antilogarithm.
+
+However, this is a little complex to implement, so we are going to use a slightly
+easier method, based on the `mosaic` package. The `mosaic` package's default `plotModel()`
+function will allow you to see the GLM model and original points:
+
+
+```{r glm_plot, echo=TRUE}
+sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
+plotModel(sppcount_glm)
+```
+
+To see what happens when we extend the x-axis to 15.0 (which you recall gave
+**negative** species counts with the `lm()` model, we can extend the limits
+of the x-axis).
+
+```{r glm_plot_extended, echo=TRUE}
+gf_point(species~pollution, data=sppcount) %>% 
+  gf_lims(x = c(0, 15)) %>% 
+  gf_smooth(method="glm", method.args = list(family="poisson"), fullrange=TRUE, se=TRUE)
+```
+
+The above code is a little more complex. We use `gf_smooth()` to add the predicted
+model curve, with arguments to explain that a GLM with Poisson distribution should
+be used. The `fullrange=TRUE` forces the fitted line to go beyond the range of the data.
+This **extrapolation** is **NOT** normally recommended (you can see the SE bars are
+bigger at the ends of the line). However, I have done it here just to demonstrate
+that the predicted number of species no longer drops to unrealistic negative values.

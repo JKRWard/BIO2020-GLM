@@ -6,3 +6,5 @@
 GLM_files/
 GLM_cache/
 rsconnect/
+*.access^
+*.attribute^
