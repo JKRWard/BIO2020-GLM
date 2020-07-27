@@ -476,3 +476,23 @@ be used. The `fullrange=TRUE` forces the fitted line to go beyond the range of t
 This **extrapolation** is **NOT** normally recommended (you can see the SE bars are
 bigger at the ends of the line). However, I have done it here just to demonstrate
 that the predicted number of species no longer drops to unrealistic negative values.
+
+### Making a prediction for a specific value of water pollution
+Suppose you want to make a prediction of the expected number of species when
+the pollution is at 3.64 mg/l. This can be easily done by creating a **model function**
+from your `glm` using the `makeFun()` command, and then giving it a number:
+
+```{r make_glm_prediction}
+sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
+sppcount_fit <- makeFun(sppcount_glm)
+sppcount_fit(pollution = 3.64)
+```
+
+Don't worry that the predicted value includes decimal points; this is quite acceptable
+in a GLM. It is how you set it up originally that matters. If you want, you can calculate the Standard Error (SE) of your predicted value:
+
+```{r make_glm_prediction_se}
+sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
+sppcount_fit <- makeFun(sppcount_glm)
+sppcount_fit(pollution = 3.64, se.fit=TRUE)
+```
