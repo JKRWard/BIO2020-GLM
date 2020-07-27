@@ -248,11 +248,12 @@ form of the model can then be expressed as:
 $$y = a + b.x + \epsilon$$
 
 Where
-$y$ = response variable, measured on a continuous scale (decimals allowed)
-$x$ = explanatory variable, in a regression this is continuous
-$a$ = intercept (where the fitted regression line crosses the vertical axis)
-$b$ = gradient of fitted line
-$\epsilon$ = unknown variation or noise in your data
+
+* $y$ = response variable, measured on a continuous scale (decimals allowed)
+* $x$ = explanatory variable, in a regression this is continuous
+* $a$ = intercept (where the fitted regression line crosses the vertical axis)
+* $b$ = gradient of fitted line
+* $\epsilon$ = unknown variation or noise in your data
 
 When you create a linear model, the `lm()` function estimates the intercept and
 slope parameters, to predict the response values as accurately as possible. The
@@ -260,20 +261,23 @@ above equation is often written as:
 
 $$y = \beta_0 + \beta_1x + \epsilon$$
 where
-$\beta_0$ = intercept
-$\beta_1$ = slope
+
+* $\beta_0$ = intercept
+* $\beta_1$ = slope
 
 This second style of writing has the advantage that it can be extended to multiple
 explanatory variables, that might be continuous, and/or categorical.
 
 $$y = \sum_{j=1}^{p} \beta_jx_j + \epsilon$$
 where
-$p$ = the number of explanatory variables
-$j$ = a counter
-$\sum$ = Greek letter Epsilon which means go through each explanatory variable
-and multiply by its estimated parameter. In the simple regression example we only
-have two parameters ($p = 2$), as $\beta_0$ the intercept (which is multipled by
-1.0) and $\beta_1$ the slope, which is multiplied by the explanatory variable.
+
+* $p$ = the number of explanatory variables
+* $j$ = a counter
+* $\sum$ = Greek letter Epsilon which indicates to go through each of the next
+calculations and add the results together
+* $\beta_jx_j$ = multiply parameter. e.g. in the simple regression example we only
+have two parameters ($p = 2$):  $\beta_0$ the intercept (which is multipled by
+1.0) and $\beta_1$ the slope, which is multiplied by the explanatory variable $x_1$.
 
 ### The need for a link function
 I mentioned in passing that we need to make our predictions and link them back
@@ -306,7 +310,9 @@ from sums of squares etc. to a technique called 'maximum likelihood'. Instead of
 t-statistics for each parameter, you will see z-statistics displayed.
 * You will no longer see an R-squared value. Instead, something called the
 Akaike Information Criterion (AIC) will show for each `glm()` model. The **lower**
-the AIC the better
+the AIC the better.
+* Instead of sums of squares (SS) the `glm()` produces a **deviance** which can
+be thought of as a 'generalised' SS.
 * If making predictions for new data based on Poisson or Binomial errors, you
 need an extra step to account for the link function.
 
