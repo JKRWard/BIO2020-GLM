@@ -8,6 +8,7 @@ runtime: shiny_prerendered
 library(learnr)
 library(mosaic)
 sppcount <- read.csv("www/sppcount.csv")
+lichens_dat  <- read.csv("www/lichen.csv")
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
@@ -489,10 +490,217 @@ sppcount_fit(pollution = 3.64)
 ```
 
 Don't worry that the predicted value includes decimal points; this is quite acceptable
-in a GLM. It is how you set it up originally that matters. If you want, you can calculate the Standard Error (SE) of your predicted value:
+in a GLM. It is how you set it up originally that matters. If you want, you can
+calculate the Standard Error (SE) of your predicted value:
 
 ```{r make_glm_prediction_se}
 sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
 sppcount_fit <- makeFun(sppcount_glm)
 sppcount_fit(pollution = 3.64, se.fit=TRUE)
 ```
+
+## GLM with binary data
+You will often have data in the form of dead/alive, present/absence, or 0/1 and
+these can be analysed with a GLM with **binomial** errors. You will often see
+this type of analysis described as a **logistic regression** in textbooks, and
+it typically produces an **S-shaped** curve, rising or falling depending on your
+dataset, rather than a straight line.
+
+### Lichen presence or absence
+Lichens are very sensitive to air pollution, and are another type of bioindicator.
+The presence or absence of lichens on trees is a good indication of the amount of
+atmospheric pollution.
+
+![](www/lichen.jpeg)
+
+However, their incidence is also affected by the pH of the bark of the tree on
+which they might grow. Therefore this dataset includes not only the amount of air
+pollution, but also the calcium content in the bark:
+
+```{r, echo=TRUE}
+summary(lichens_dat)
+head(lichens_dat)
+```
+
+```{r recode, echo=FALSE}
+question("Looking at the summary output above, what might be useful to do before
+         visualising and analysing the data?",
+         answer("Since pH uses a log scale, it is essential to log-transform
+                the calcium content", message="No. Whilst pH does use log, it is
+                based on hydrogen-ion concentration not calcium"),
+         answer("Standardise the air pollution to zero mean and unit standard
+                deviation", message="No, this is not essential, although be
+                aware that this is sometimes useful if the explanatory variables
+                are on very different scales"),
+         answer("Standardise the calcium to zero mean and unit standard
+                deviation", message="No, this is not essential, although be
+                aware that this is sometimes useful if the explanatory variables
+                are on very different scales"),
+         answer("Convert the presence and absence of lichen to a factor", 
+                correct=TRUE, message="Good. This is not essential for the GLM
+                analysis, but is often required for good visualisation. You can
+                use the $\\text{as.factor()}$ function to do this."),
+         allow_retry = TRUE)
+```
+
+### Visualising the data
+In general, it is useful to quickly visualise the data before you analyse them.
+A good summary is a boxplot, but by default that would put our response variable
+on the horizontal axis. By default the `gf_boxplot()` function expects a continuous
+variable to the left of the `~` sign, and a categorical one on the right. However,
+we can rotate the boxplot on its side using the `gf_refine(coord_flip())` option.
+
+```{r boxplot_calcium, exercise=TRUE}
+# Create a factor for the lichen presence/absence
+lichens_dat$lichen_fct <- as.factor(lichens_dat$lichen)
+summary(lichens_dat) # lichen_fct presence/absence now scores as 0/1 factor
+
+gf_boxplot(calcium ~ lichen_fct, data=lichens_dat) %>% 
+  gf_refine(coord_flip()) # Flips horizontally. Note double-bracket
+```
+
+In the R code box below, create a boxplot for the air pollution. Try improving
+your graph by changing the title of the lichen axis to "Presence or absence of
+lichens", and change "airpoll" to read "Air pollution". **Hint**: Use the
+`gf_labs()` function to give a customised label; the `x=` and `y=` options
+operate **before** you flip the boxplot.
+
+```{r boxplot_airpoll, exercise=TRUE}
+
+```
+```{r boxplot_airpoll-solution}
+lichens_dat$lichen_fct <- as.factor(lichens_dat$lichen)
+
+gf_boxplot(airpoll ~ lichen_fct, data=lichens_dat) %>% 
+  gf_labs(x = "Presence or absence of lichen", y = "Air pollution") %>% 
+  gf_refine(coord_flip())
+```
+
+### Setting up a binomial GLM
+The boxplots suggest that lichens are more abundant at high calcium and low air
+pollution. The GLM model is actually going to try and fit a curve to data of this
+form:
+
+```{r lichen_points, echo=TRUE}
+# As the GLM will predict a probability between 0 and 1, we will use the original
+# lichen variable as the response, not the categorical  lichen_fct
+gf_point(lichen ~ calcium, data=lichens_dat)
+```
+
+**Note:** if you have a lot of data, and the points overlap too much to view
+clearly, it can be useful to show them as 'jittered points' using `gf_jitter()`
+
+```{r lichen_jitter, echo=TRUE}
+# The height option controls how much 'jitter' occurs
+gf_jitter(lichen ~ calcium, data=lichens_dat, height=0.05)
+```
+
+We can now create the binomial GLM, using the two 'main effects' of `calcium`
+and `airpoll`, and also the interaction term. Remember that the summary table 
+shows deviance and AIC.
+
+```{r full_lichen_glm, echo=TRUE}
+lichen_glm1 <- glm(lichen ~ calcium + airpoll + calcium:airpoll, family=binomial, data=lichens_dat)
+summary(lichen_glm1)
+```
+
+Let's create a simpler model.
+
+```{r which_lichen_model}
+question("Which term(s) should be removed for the simpler model?",
+         answer("All terms are non-significant terms, therefore we cannot make
+                a simpler model", message="No. Always look at the interaction
+                term first"),
+         answer("Only keep airpoll as it appears to be most important", message="No. 
+                Since the interaction term is non-significant it should be 
+                removed first"),
+         answer("The interaction term should be removed first and the new model
+                tested", correct=TRUE, message="Good. Always look at the interaction
+                before the main effects"),
+         allow_retry = TRUE,
+         random_answer_order = TRUE)
+```
+
+On the basis of your answer above, create a simpler model called `lichen_glm2`
+and look at the summary:
+
+```{r simpler_lichen_glm, exercise=TRUE}
+
+```
+```{r simpler_lichen_glm-solution}
+lichen_glm2 <- glm(lichen ~ calcium + airpoll, family=binomial, data=lichens_dat)
+summary(lichen_glm2)
+```
+
+We can compare two GLM models using the `anova()` function, with the option that
+the `test="Chi"`. This does what is known as a likelihood-ratio test. If there
+is no significant difference in the models, you go for the one with the lower
+AIC.
+
+```{r compare_lichens-setup}
+lichen_glm1 <- glm(lichen ~ calcium * airpoll, family=binomial, data=lichens_dat)
+lichen_glm2 <- glm(lichen ~ calcium + airpoll, family=binomial, data=lichens_dat)
+```
+
+```{r compare_lichens, exercise=TRUE}
+
+```
+```{r compare_lichens-solution}
+anova(lichen_glm1, lichen_glm2, test="Chi")
+```
+
+You can see that there is no statistical difference in the p-value for the 
+comparison of the two models. You should select the **simpler model**, which
+does not have the interaction term.
+
+### Predicted values
+The coefficient estimates shown in the `summary(lichen_glm2)` table are in
+***logits***. Recall the explanation of the **link** function that is used in
+GLMs:
+
+* Gaussian (normal) distribution with continuous response = identity Link = no
+different from a conventional linear model.
+* Poisson distribution with count data = log link = take natural logarithms when
+analysing by GLM, and exponents, `exp()` function, to get back to original units.
+* Binomial distribution with presence/absence or proportion = take logits to
+analyse in the GLM, and 'anti-logits' to get back to original units.
+
+So what are these mysterious "logits"? Logits are the natural logarithm of odds,
+and odds are the ratio of successes to failures (or presences to absences etc.).
+Therefore manually calculating your predicted values is quite complicated, as you
+have to convert your estimates back from the original logits. Fortunately (phew!)
+R will do this for you automatically, and you can easily view your model
+predictions.
+
+We can use the `makeFun()` command to create a function from our GLM that can
+be used to create predictions in the correct units (a probability between 0 and
+1.0) either for a given amount of `calcium` and `airpoll`:
+
+```{r lichen_fit-setup}
+lichen_glm2 <- glm(lichen ~ calcium + airpoll, family=binomial, data=lichens_dat)
+```
+```{r lichen_fit, echo=TRUE}
+# Create a prediction function from our best GLM
+lichen_fit <- makeFun(lichen_glm2)
+
+# What is the predicted probability of lichen being present at calcium of 2 and
+# air pollution of 5?
+lichen_fit(calcium=2, airpoll=5)
+```
+
+If we want to create a plot with the curve for the predicted probability across
+a range of calcium values, we can create a new GLM that only includes calcium,
+and make predictions from that. Run the code below to see this. Note the addition
+of the `
+
+```{r lichen_fit_and_plot, exercise=TRUE}
+# You can use the update function to simplify the model
+# give it the name of the original model
+# then . ~ . to indicate the same response and explanatories
+# finally -airpoll to remove the airpoll variable
+lichen_calcium_glm <- update(lichen_glm2, . ~ . -airpoll)
+plotModel(lichen_calcium_glm)
+```
+
+Modify the code above, to create a plot showing the predicted probability curve
+for air pollution `airpoll` instead of calcium.
