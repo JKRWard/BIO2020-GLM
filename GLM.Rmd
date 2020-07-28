@@ -337,8 +337,8 @@ The data are in a data.frame called `sppcount`. Begin by creating a scatterplot
 of the data, run a linear model, examine its summary table, and look at the plots
 of residuals and QQ plot. **Hints:** Use `gf_point()` for the scatterplot, for
 the `lm()` make sure you have your response and explanatory variables the right
-way round. Use `mplot(spp_count_lm)` to check all diagnostic plots or `gf_qq()`
-with the model residuals.
+way round. Use `mplot(spp_count_lm, which=1:2)` to check diagnostic the residuals
+and QQ plots, or alternatively manually extract the residuals and use `gf_qq()`.
 
 ```{r sppcount_lm, exercise=TRUE}
 
@@ -483,7 +483,7 @@ Suppose you want to make a prediction of the expected number of species when
 the pollution is at 3.64 mg/l. This can be easily done by creating a **model function**
 from your `glm` using the `makeFun()` command, and then giving it a number:
 
-```{r make_glm_prediction}
+```{r make_glm_prediction, echo=TRUE}
 sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
 sppcount_fit <- makeFun(sppcount_glm)
 sppcount_fit(pollution = 3.64)
@@ -493,7 +493,7 @@ Don't worry that the predicted value includes decimal points; this is quite acce
 in a GLM. It is how you set it up originally that matters. If you want, you can
 calculate the Standard Error (SE) of your predicted value:
 
-```{r make_glm_prediction_se}
+```{r make_glm_prediction_se, echo=TRUE}
 sppcount_glm <- glm(species~pollution, family = "poisson", data=sppcount)
 sppcount_fit <- makeFun(sppcount_glm)
 sppcount_fit(pollution = 3.64, se.fit=TRUE)
@@ -690,16 +690,12 @@ lichen_fit(calcium=2, airpoll=5)
 
 If we want to create a plot with the curve for the predicted probability across
 a range of calcium values, we can create a new GLM that only includes calcium,
-and make predictions from that. Run the code below to see this. Note the addition
-of the `
+and make predictions from that. However, for a simple visualisation, it's often
+easier to use `gf_jitter()` with `gf_smooth()` as we did for the Poisson GLM:
 
 ```{r lichen_fit_and_plot, exercise=TRUE}
-# You can use the update function to simplify the model
-# give it the name of the original model
-# then . ~ . to indicate the same response and explanatories
-# finally -airpoll to remove the airpoll variable
-lichen_calcium_glm <- update(lichen_glm2, . ~ . -airpoll)
-plotModel(lichen_calcium_glm)
+gf_jitter(lichen ~ calcium, data=lichens_dat, height=0.05) %>% 
+  gf_smooth(method = "glm", method.args=list(family="binomial"), se=TRUE)
 ```
 
 Modify the code above, to create a plot showing the predicted probability curve
